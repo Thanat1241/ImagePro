@@ -1,0 +1,1 @@
+"""Persistent storage for AI Image Studio."""
