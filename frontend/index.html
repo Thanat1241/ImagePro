@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Image Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="header"><a class="brand" href="."><span class="brand-mark">✦</span><span>image<span class="brand-dot">.</span>studio</span></a><span class="status"><i></i> พร้อมใช้งาน</span></header>
+    <section class="intro"><p class="eyebrow">IMAGE STUDIO</p><h1>สร้างภาพของคุณ</h1><p>เปลี่ยนไอเดียให้เป็นภาพด้วยโมเดลของคุณ</p></section>
+    <section class="studio">
+      <div class="controls">
+        <label class="field-label" for="prompt">Prompt</label>
+        <div class="prompt-box"><textarea id="prompt" maxlength="500" placeholder="อธิบายภาพที่ต้องการ...">A quiet Japanese tea house hidden in a misty forest, warm light, editorial photography</textarea><div class="prompt-footer"><span id="charCount"></span><button id="clearPrompt" type="button">ล้าง</button></div></div>
+        <div class="settings"><div><label class="field-label" for="model">โมเดล</label><select id="model"><option value="meinamix_v12Final.safetensors">meinamix_v12Final.safetensors</option></select><small class="model-note">โมเดลพื้นฐานใน backend/models</small></div><div><span class="field-label">อัตราส่วน</span><div class="ratios" id="ratioGroup"><button class="selected" data-ratio="1:1" type="button">1:1</button><button data-ratio="4:3" type="button">4:3</button><button data-ratio="16:9" type="button">16:9</button><button data-ratio="9:16" type="button">9:16</button></div></div></div>
+        <button class="generate" id="generate" type="button"><span>✦</span><span id="generateLabel">สร้างภาพ</span></button>
+        <p class="hint">ใช้เวลาสร้างภาพขึ้นอยู่กับ GPU และการตั้งค่า</p>
+      </div>
+      <div class="preview"><div class="preview-top"><span class="field-label">Preview</span><span id="imageStatus">ยังไม่มีภาพ</span></div><div class="canvas" id="canvasImage"><div class="empty" id="emptyState"><span>✦</span><p>ภาพที่สร้างจะแสดงที่นี่</p></div><div class="loading" id="loadingState"><div class="loader"></div><p id="progressMessage">กำลังสร้างภาพ...</p><div class="progress-track"><div class="progress-bar" id="progressBar"></div></div><strong id="progressPercent">0%</strong></div></div><a id="downloadLink" class="download-link" href="#" download="generated-image.png" style="display:none;">ดาวน์โหลดรูป</a></div>
+    </section>
+    <footer>AI Image Studio <span>/</span> ใช้โมเดล meinamix_v12Final</footer>
+  </main>
+    <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
