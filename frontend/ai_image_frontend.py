@@ -36,7 +36,7 @@ PAGE = r'''<!doctype html>
   <section class="studio">
     <div>
       <label class="label" for="prompt">Prompt</label>
-      <textarea id="prompt" maxlength="500" placeholder="อธิบายภาพที่ต้องการ...">A quiet Japanese tea house hidden in a misty forest, warm light, editorial photography</textarea>
+      <textarea id="prompt" maxlength="500" placeholder="อธิบายภาพที่ต้องการ...">A young anime girl with long pink-purple hair, bright crimson eyes, playful smile, gothic school uniform, soft dramatic lighting, elegant pose, detailed portrait, character inspired by Himiko Toga from My Hero Academia, high detail, cinematic composition</textarea>
       <div class="count"><span>สูงสุด 500 ตัวอักษร</span><span id="charCount"></span></div>
       <div class="tools">
         <div><label class="label" for="model">โมเดล</label><select id="model"><option value="meinamix_v12Final.safetensors">meinamix_v12Final.safetensors</option></select><div class="model-note" id="modelNote"></div></div>
@@ -55,7 +55,7 @@ PAGE = r'''<!doctype html>
 </main>
 <script>
 const configuredApiUrl = __API_BASE_URL__;
-const apiBaseUrl = (configuredApiUrl || `${window.location.protocol}//${window.location.hostname}:8000`).replace(/\/$/, '');
+const apiBaseUrl = (configuredApiUrl || `${window.location.protocol}//${window.location.hostname}:8001`).replace(/\/$/, '');
 const promptInput = document.querySelector('#prompt');
 const modelSelect = document.querySelector('#model');
 const generateButton = document.querySelector('#generate');
@@ -96,9 +96,20 @@ updateCount();loadModels();
 def make_handler(api_url: str | None):
     class FrontendHandler(BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path not in ("/", "/index.html"):
+            if self.path.startswith("/api/"):
                 self.send_error(404)
                 return
+
+            parsed_path = self.path.split("?", 1)[0]
+            if parsed_path == "/favicon.ico":
+                self.send_response(204)
+                self.end_headers()
+                return
+
+            if parsed_path not in ("/", "/index.html"):
+                self.send_error(404)
+                return
+
             configured_url = "null" if api_url is None else json.dumps(api_url)
             page = PAGE.replace("__API_BASE_URL__", configured_url).encode("utf-8")
             self.send_response(200)
