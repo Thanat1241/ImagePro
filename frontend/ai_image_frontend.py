@@ -117,7 +117,7 @@ PAGE = r'''<!doctype html>
       font: inherit;
     }
     textarea {
-      height: 135px;
+      height: 140px;
       padding: 13px;
       resize: vertical;
       line-height: 1.6;
@@ -413,12 +413,52 @@ PAGE = r'''<!doctype html>
 
   <section class="studio">
     <div>
-      <label class="label" for="prompt">Prompt</label>
+      <label class="label" for="prompt">Prompt (คำอธิบายภาพ)</label>
       <textarea id="prompt" maxlength="500" placeholder="อธิบายภาพที่ต้องการ...">A young anime girl with long pink-purple hair, bright crimson eyes, playful smile, gothic school uniform, soft dramatic lighting, elegant pose, detailed portrait, character inspired by Himiko Toga from My Hero Academia, high detail, cinematic composition</textarea>
-      <div class="count"><span>สูงสุด 500 ตัวอักษร</span><span id="charCount"></span></div>
-      <div class="tools">
-        <div><label class="label" for="model">โมเดล</label><select id="model"><option value="meinamix_v12Final.safetensors">meinamix_v12Final.safetensors</option></select><div class="model-note" id="modelNote"></div></div>
-        <div><span class="label">อัตราส่วน</span><div class="ratios" id="ratios"><button class="selected" data-ratio="1:1" type="button">1:1</button><button data-ratio="4:3" type="button">4:3</button><button data-ratio="16:9" type="button">16:9</button><button data-ratio="9:16" type="button">9:16</button></div></div>
+      <div class="count-bar">
+        <span>สูงสุด 500 ตัวอักษร</span>
+        <div>
+          <button class="btn-clear" id="clearPrompt" type="button">ล้างข้อความ</button>
+          &nbsp;|&nbsp;
+          <span id="charCount"></span>
+        </div>
+      </div>
+
+      <div class="tools-grid">
+        <div class="tool-span-2">
+          <label class="label" for="model">โมเดล</label>
+          <select id="model">
+            <option value="meinamix_v12Final.safetensors">meinamix_v12Final.safetensors</option>
+          </select>
+          <div class="model-note" id="modelNote">กำลังโหลดโมเดล...</div>
+        </div>
+
+        <div>
+          <span class="label">อัตราส่วนภาพ</span>
+          <div class="btn-group" id="ratios">
+            <button class="selected" data-ratio="1:1" type="button">1:1</button>
+            <button data-ratio="4:3" type="button">4:3</button>
+            <button data-ratio="16:9" type="button">16:9</button>
+            <button data-ratio="9:16" type="button">9:16</button>
+          </div>
+        </div>
+
+        <div>
+          <span class="label">จำนวนภาพ</span>
+          <div class="btn-group" id="counts">
+            <button class="selected" data-count="1" type="button">1</button>
+            <button data-count="2" type="button">2</button>
+            <button data-count="4" type="button">4</button>
+          </div>
+        </div>
+
+        <div class="tool-span-2">
+          <label class="label" for="cfgScale">ความอิสระของ AI (CFG Scale)</label>
+          <div class="cfg-wrap">
+            <input id="cfgScale" type="range" min="1" max="20" step="0.5" value="7">
+            <span class="cfg-val" id="cfgVal">7.0</span>
+          </div>
+        </div>
       </div>
 
       <button class="generate" id="generate" type="button">✦ &nbsp;สร้างภาพ</button>
@@ -457,7 +497,8 @@ PAGE = r'''<!doctype html>
 
 <script>
 const configuredApiUrl = __API_BASE_URL__;
-const apiBaseUrl = (configuredApiUrl || `${window.location.protocol}//${window.location.hostname}:8001`).replace(/\/$/, '');
+const apiBaseUrl = (configuredApiUrl || `${window.location.protocol}//${window.location.hostname}:8000`).replace(/\/$/, '');
+
 const promptInput = document.querySelector('#prompt');
 const modelSelect = document.querySelector('#model');
 const generateButton = document.querySelector('#generate');
@@ -483,17 +524,24 @@ if (backendInfo) {
 }
 
 function updateCount() {
-  document.querySelector('#charCount').textContent = `${promptInput.value.length} / 500`;
+  if (promptInput) {
+    const charCount = document.querySelector('#charCount');
+    if (charCount) charCount.textContent = `${promptInput.value.length} / 500`;
+  }
 }
 
 function showError(msg) {
-  errorBox.textContent = msg;
-  errorBox.classList.add('active');
+  if (errorBox) {
+    errorBox.textContent = msg;
+    errorBox.classList.add('active');
+  }
 }
 
 function hideError() {
-  errorBox.textContent = '';
-  errorBox.classList.remove('active');
+  if (errorBox) {
+    errorBox.textContent = '';
+    errorBox.classList.remove('active');
+  }
 }
 
 async function readResponse(response) {
@@ -510,13 +558,18 @@ async function readResponse(response) {
   return payload;
 }
 
-promptInput.addEventListener('input', updateCount);
+if (promptInput) {
+  promptInput.addEventListener('input', updateCount);
+}
 
-document.querySelector('#clearPrompt').addEventListener('click', () => {
-  promptInput.value = '';
-  updateCount();
-  promptInput.focus();
-});
+const clearBtn = document.querySelector('#clearPrompt');
+if (clearBtn && promptInput) {
+  clearBtn.addEventListener('click', () => {
+    promptInput.value = '';
+    updateCount();
+    promptInput.focus();
+  });
+}
 
 document.querySelectorAll('#ratios button').forEach(button => {
   button.addEventListener('click', () => {
@@ -534,9 +587,11 @@ document.querySelectorAll('#counts button').forEach(button => {
   });
 });
 
-cfgInput.addEventListener('input', () => {
-  cfgVal.textContent = Number(cfgInput.value).toFixed(1);
-});
+if (cfgInput && cfgVal) {
+  cfgInput.addEventListener('input', () => {
+    cfgVal.textContent = Number(cfgInput.value).toFixed(1);
+  });
+}
 
 async function downloadImage(url, filename = 'generated-image.png', button = null) {
   const originalText = button ? button.innerHTML : '';
@@ -568,6 +623,7 @@ async function downloadImage(url, filename = 'generated-image.png', button = nul
 }
 
 function renderImages(images) {
+  if (!galleryBox || !emptyBox) return;
   galleryBox.innerHTML = '';
   if (!images || !images.length) {
     emptyBox.style.display = 'block';
@@ -606,6 +662,7 @@ function renderImages(images) {
 }
 
 async function checkBackend() {
+  if (!statusDot || !statusLabel) return false;
   try {
     const res = await fetch(`${apiBaseUrl}/api/health`, { cache: 'no-store' });
     if (res.ok) {
@@ -623,6 +680,7 @@ async function checkBackend() {
 
 async function loadModels() {
   const modelNote = document.querySelector('#modelNote');
+  if (!modelSelect) return;
   try {
     const data = await readResponse(await fetch(`${apiBaseUrl}/api/models`));
     const models = data.models || [];
@@ -633,96 +691,101 @@ async function loadModels() {
         option.textContent = item.filename;
         return option;
       }));
-      modelNote.textContent = `พบ ${models.length} โมเดลใน backend/models`;
+      if (modelNote) modelNote.textContent = `พบ ${models.length} โมเดลใน backend/models`;
     } else {
-      modelNote.textContent = 'ยังไม่มีไฟล์โมเดลใน backend/models';
+      if (modelNote) modelNote.textContent = 'ยังไม่มีไฟล์โมเดลใน backend/models';
     }
   } catch {
-    modelNote.textContent = 'ใช้โมเดลเริ่มต้น (ตรวจสอบ uvicorn)';
+    if (modelNote) modelNote.textContent = 'ใช้โมเดลเริ่มต้น (ตรวจสอบ uvicorn)';
   }
 }
 
-generateButton.addEventListener('click', async () => {
-  const text = promptInput.value.trim();
-  if (!text || generateButton.disabled) return;
+if (generateButton) {
+  generateButton.addEventListener('click', async () => {
+    const text = promptInput ? promptInput.value.trim() : '';
+    if (!text || generateButton.disabled) return;
 
-  hideError();
-  generateButton.disabled = true;
-  generateButton.innerHTML = '✦ &nbsp;กำลังสร้างภาพ...';
+    hideError();
+    generateButton.disabled = true;
+    generateButton.innerHTML = '✦ &nbsp;กำลังสร้างภาพ...';
 
-  emptyBox.style.display = 'none';
-  galleryBox.innerHTML = '';
-  galleryBox.style.display = 'none';
+    if (emptyBox) emptyBox.style.display = 'none';
+    if (galleryBox) {
+      galleryBox.innerHTML = '';
+      galleryBox.style.display = 'none';
+    }
 
-  loadingBox.classList.add('active');
-  barEl.style.width = '0%';
-  percentEl.textContent = '0%';
-  progressMsgEl.textContent = 'ส่งคำขอสร้างภาพ...';
-  statusEl.textContent = 'กำลังสร้างภาพ';
+    if (loadingBox) loadingBox.classList.add('active');
+    if (barEl) barEl.style.width = '0%';
+    if (percentEl) percentEl.textContent = '0%';
+    if (progressMsgEl) progressMsgEl.textContent = 'ส่งคำขอสร้างภาพ...';
+    if (statusEl) statusEl.textContent = 'กำลังสร้างภาพ';
 
-  try {
-    const started = await readResponse(await fetch(`${apiBaseUrl}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: text,
-        model: modelSelect.value,
-        model_file: modelSelect.value,
-        ratio: selectedRatio,
-        count: selectedCount,
-        cfg_scale: Number(cfgInput.value) || 7
-      })
-    }));
+    try {
+      const cfgValue = cfgInput ? Number(cfgInput.value) : 7;
+      const started = await readResponse(await fetch(`${apiBaseUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: text,
+          model: modelSelect ? modelSelect.value : 'meinamix_v12Final.safetensors',
+          model_file: modelSelect ? modelSelect.value : 'meinamix_v12Final.safetensors',
+          ratio: selectedRatio,
+          count: selectedCount,
+          cfg_scale: cfgValue || 7
+        })
+      }));
 
-    let job = started;
-    let attempts = 0;
-    const maxAttempts = 300; // timeout ~ 5 นาที
-    let consecutiveFails = 0;
+      let job = started;
+      let attempts = 0;
+      const maxAttempts = 300; // timeout ~ 5 นาที
+      let consecutiveFails = 0;
 
-    while (job.status !== 'completed' && job.status !== 'failed') {
-      if (attempts++ >= maxAttempts) {
-        throw new Error('ใช้เวลานานเกินกำหนด (Timeout 5 นาที) กรุณาตรวจสอบสถานะ AI Worker');
-      }
-      await new Promise(r => window.setTimeout(r, 1000));
-
-      try {
-        const pollRes = await fetch(`${apiBaseUrl}/api/generate/${started.job_id}`);
-        job = await readResponse(pollRes);
-        consecutiveFails = 0;
-      } catch (pollErr) {
-        consecutiveFails++;
-        if (consecutiveFails >= 5) {
-          throw new Error(`การเชื่อมต่อไปยัง Backend ขาดหาย: ${pollErr.message}`);
+      while (job.status !== 'completed' && job.status !== 'failed') {
+        if (attempts++ >= maxAttempts) {
+          throw new Error('ใช้เวลานานเกินกำหนด (Timeout 5 นาที) กรุณาตรวจสอบสถานะ AI Worker');
         }
-        continue;
+        await new Promise(r => window.setTimeout(r, 1000));
+
+        try {
+          const pollRes = await fetch(`${apiBaseUrl}/api/generate/${started.job_id}`);
+          job = await readResponse(pollRes);
+          consecutiveFails = 0;
+        } catch (pollErr) {
+          consecutiveFails++;
+          if (consecutiveFails >= 5) {
+            throw new Error(`การเชื่อมต่อไปยัง Backend ขาดหาย: ${pollErr.message}`);
+          }
+          continue;
+        }
+
+        const progress = Number(job.progress || 0);
+        if (barEl) barEl.style.width = `${progress}%`;
+        if (percentEl) percentEl.textContent = `${progress}%`;
+        if (progressMsgEl) progressMsgEl.textContent = job.message || 'กำลังสร้างภาพ...';
       }
 
-      const progress = Number(job.progress || 0);
-      barEl.style.width = `${progress}%`;
-      percentEl.textContent = `${progress}%`;
-      progressMsgEl.textContent = job.message || 'กำลังสร้างภาพ...';
+      if (job.status === 'failed') {
+        throw new Error(job.message || 'การสร้างภาพล้มเหลว');
+      }
+
+      renderImages(job.images || []);
+      if (statusEl) statusEl.textContent = `สร้างเสร็จแล้ว (${(job.images || []).length} ภาพ)`;
+
+    } catch (error) {
+      if (emptyBox) emptyBox.style.display = 'block';
+      if (statusEl) statusEl.textContent = 'เกิดข้อผิดพลาด';
+      const detail = error instanceof TypeError
+        ? `เชื่อมต่อ Backend ไม่ได้ (${apiBaseUrl}) ตรวจสอบว่า uvicorn กำลังทำงานอยู่`
+        : error.message;
+      showError(detail);
+    } finally {
+      if (loadingBox) loadingBox.classList.remove('active');
+      generateButton.disabled = false;
+      generateButton.innerHTML = '✦ &nbsp;สร้างภาพ';
     }
-
-    if (job.status === 'failed') {
-      throw new Error(job.message || 'การสร้างภาพล้มเหลว');
-    }
-
-    renderImages(job.images || []);
-    statusEl.textContent = `สร้างเสร็จแล้ว (${(job.images || []).length} ภาพ)`;
-
-  } catch (error) {
-    emptyBox.style.display = 'block';
-    statusEl.textContent = 'เกิดข้อผิดพลาด';
-    const detail = error instanceof TypeError
-      ? `เชื่อมต่อ Backend ไม่ได้ (${apiBaseUrl}) ตรวจสอบว่า uvicorn กำลังทำงานอยู่`
-      : error.message;
-    showError(detail);
-  } finally {
-    loadingBox.classList.remove('active');
-    generateButton.disabled = false;
-    generateButton.innerHTML = '✦ &nbsp;สร้างภาพ';
-  }
-});
+  });
+}
 
 updateCount();
 checkBackend();
