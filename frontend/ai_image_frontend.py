@@ -497,7 +497,7 @@ PAGE = r'''<!doctype html>
 
 <script>
 const configuredApiUrl = __API_BASE_URL__;
-const apiBaseUrl = (configuredApiUrl || `${window.location.protocol}//${window.location.hostname}:8000`).replace(/\/$/, '');
+const apiBaseUrl = (configuredApiUrl || `${window.location.protocol}//${window.location.hostname}:8001`).replace(/\/$/, '');
 
 const promptInput = document.querySelector('#prompt');
 const modelSelect = document.querySelector('#model');
