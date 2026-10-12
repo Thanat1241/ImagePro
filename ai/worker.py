@@ -27,8 +27,8 @@ def resolve_shared_path(env_name: str, default_path: Path) -> Path:
 
 
 BACKEND_DIR = PROJECT_ROOT / "backend"
-MODELS_DIR = resolve_shared_path("AI_MODELS_DIR", BACKEND_DIR / "models")
-OUTPUTS_DIR = resolve_shared_path("AI_OUTPUTS_DIR", BACKEND_DIR / "outputs")
+MODELS_DIR = resolve_shared_path("AI_MODELS_DIR", PROJECT_ROOT / "ai" / "models")
+OUTPUTS_DIR = resolve_shared_path("AI_OUTPUTS_DIR", PROJECT_ROOT / "ai" / "outputs")
 POLL_INTERVAL_SECONDS = 1
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

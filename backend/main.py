@@ -58,8 +58,8 @@ def resolve_shared_path(env_name: str, default_path: Path) -> Path:
 
 app = FastAPI(title="AI Image Studio Backend", version="1.0.0")
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")
-MODELS_DIR = resolve_shared_path("AI_MODELS_DIR", Path(__file__).resolve().parent / "models")
-OUTPUTS_DIR = resolve_shared_path("AI_OUTPUTS_DIR", Path(__file__).resolve().parent / "outputs")
+MODELS_DIR = resolve_shared_path("AI_MODELS_DIR", PROJECT_ROOT / "ai" / "models")
+OUTPUTS_DIR = resolve_shared_path("AI_OUTPUTS_DIR", PROJECT_ROOT / "ai" / "outputs")
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_MODEL_EXTENSIONS = {".safetensors", ".ckpt", ".gguf", ".pt", ".pth"}
@@ -152,8 +152,8 @@ def generate_image(request: GenerateRequest, http_request: FastAPIRequest):
     if selected_model_file:
         model_file = safe_filename(selected_model_file)
         model_path = MODELS_DIR / model_file
-        if not model_path.is_file():
-            raise HTTPException(status_code=404, detail="ไม่พบโมเดลใน shared model directory")
+        # Model files may live on the AI machine instead of the backend machine.
+        # The actual validation happens in the worker when it claims the job.
     else:
         model_path = None
     if model_path:
@@ -174,7 +174,7 @@ def generate_image(request: GenerateRequest, http_request: FastAPIRequest):
         })
         return {"job_id": job_id, "status": "queued"}
 
-    raise HTTPException(status_code=400, detail="กรุณาดาวน์โหลดและเลือกโมเดลใน backend/models ก่อนสร้างภาพ")
+    raise HTTPException(status_code=400, detail="กรุณาเลือกไฟล์โมเดลที่ถูกต้องก่อนสร้างภาพ")
 
 
 @app.get("/api/generate/{job_id}")
