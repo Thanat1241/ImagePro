@@ -1,6 +1,7 @@
 """Background worker that claims generation jobs from the SQLite queue."""
 
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -14,9 +15,22 @@ from ai.image_generator import generate_images
 from database import store
 
 
+
+
+def resolve_shared_path(env_name: str, default_path: Path) -> Path:
+    configured = os.getenv(env_name)
+    if not configured:
+        return default_path
+
+    candidate = Path(configured).expanduser()
+    if not candidate.is_absolute():
+        candidate = PROJECT_ROOT / candidate
+    return candidate
+
+
 BACKEND_DIR = PROJECT_ROOT / "backend"
-MODELS_DIR = BACKEND_DIR / "models"
-OUTPUTS_DIR = BACKEND_DIR / "outputs"
+MODELS_DIR = resolve_shared_path("AI_MODELS_DIR", BACKEND_DIR / "models")
+OUTPUTS_DIR = resolve_shared_path("AI_OUTPUTS_DIR", BACKEND_DIR / "outputs")
 POLL_INTERVAL_SECONDS = 1
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -28,7 +42,7 @@ def process_job(job: dict[str, Any]) -> None:
 
     try:
         if not model_path.is_file():
-            raise FileNotFoundError(f"ไม่พบโมเดลใน backend/models: {model_path.name}")
+            raise FileNotFoundError(f"ไม่พบโมเดลใน shared model directory: {model_path.name}")
 
         generated_urls = generate_images(
             model_path,

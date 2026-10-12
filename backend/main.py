@@ -43,10 +43,23 @@ class GeneratedImage(BaseModel):
     ratio: str
 
 
+
+
+def resolve_shared_path(env_name: str, default_path: Path) -> Path:
+    configured = os.getenv(env_name)
+    if not configured:
+        return default_path
+
+    candidate = Path(configured).expanduser()
+    if not candidate.is_absolute():
+        candidate = PROJECT_ROOT / candidate
+    return candidate
+
+
 app = FastAPI(title="AI Image Studio Backend", version="1.0.0")
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")
-MODELS_DIR = Path(__file__).resolve().parent / "models"
-OUTPUTS_DIR = Path(__file__).resolve().parent / "outputs"
+MODELS_DIR = resolve_shared_path("AI_MODELS_DIR", Path(__file__).resolve().parent / "models")
+OUTPUTS_DIR = resolve_shared_path("AI_OUTPUTS_DIR", Path(__file__).resolve().parent / "outputs")
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_MODEL_EXTENSIONS = {".safetensors", ".ckpt", ".gguf", ".pt", ".pth"}
