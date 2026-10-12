@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -7,6 +8,10 @@ import json
 import shutil
 import uuid
 from typing import Literal
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from fastapi import FastAPI, HTTPException, Request as FastAPIRequest
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,6 +60,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.mount("/outputs", StaticFiles(directory=OUTPUTS_DIR), name="outputs")
+
+
+@app.get("/")
+def root_status():
+    return {
+        "status": "ok",
+        "service": "ai-image-backend",
+        "message": "This is the API backend. Open the frontend on port 5500, e.g. http://<HOST_IP>:5500",
+        "health_url": "/api/health",
+        "frontend_url": "http://<HOST_IP>:5500",
+    }
 
 @app.get("/api/health")
 def health_check():
