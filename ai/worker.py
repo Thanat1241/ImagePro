@@ -1,15 +1,19 @@
 """Background worker that claims generation jobs from the SQLite queue."""
 
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from ai.image_generator import generate_images
 from database import store
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_DIR = PROJECT_ROOT / "backend"
 MODELS_DIR = BACKEND_DIR / "models"
 OUTPUTS_DIR = BACKEND_DIR / "outputs"
