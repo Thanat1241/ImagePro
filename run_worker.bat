@@ -12,6 +12,8 @@ if not defined AI_WORKER_TOKEN (
 )
 if not defined AI_MODELS_DIR set "AI_MODELS_DIR=%PROJECT_ROOT%ai\models"
 if not defined AI_OUTPUTS_DIR set "AI_OUTPUTS_DIR=%PROJECT_ROOT%ai\outputs"
+if not defined HF_HUB_DISABLE_SYMLINKS set "HF_HUB_DISABLE_SYMLINKS=1"
+if not defined HF_HUB_DISABLE_SYMLINKS_WARNING set "HF_HUB_DISABLE_SYMLINKS_WARNING=1"
 
 if exist "%PROJECT_ROOT%.venv\Scripts\python.exe" (
     set "PYTHON_EXE=%PROJECT_ROOT%.venv\Scripts\python.exe"
