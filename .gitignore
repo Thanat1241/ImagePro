@@ -7,5 +7,7 @@ __pycache__/
 database/*.sqlite3*
 backend/models/*
 !backend/models/.gitkeep
+ai/models/*
+!ai/models/.gitkeep
 backend/outputs/*
 !backend/outputs/.gitkeep
