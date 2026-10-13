@@ -21,17 +21,6 @@ from ai.image_generator import generate_images
 from database import store
 
 
-def resolve_shared_path(env_name: str, default_path: Path) -> Path:
-    configured = os.getenv(env_name)
-    if not configured:
-        return default_path
-
-    candidate = Path(configured).expanduser()
-    if not candidate.is_absolute():
-        candidate = PROJECT_ROOT / candidate
-    return candidate
-
-
 BACKEND_DIR = PROJECT_ROOT / "backend"
 MODELS_DIR = resolve_shared_path("AI_MODELS_DIR", BACKEND_DIR / "models")
 OUTPUTS_DIR = resolve_shared_path("AI_OUTPUTS_DIR", BACKEND_DIR / "outputs")
