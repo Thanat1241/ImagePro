@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from database import store
+from fastapi import Response
 
 
 class GenerateRequest(BaseModel):
@@ -188,3 +189,24 @@ def generation_status(job_id: str):
 @app.get("/api/history")
 def generation_history(limit: int = 50):
     return {"jobs": store.list_jobs(limit)}
+
+
+# Worker HTTP endpoints for remote workers (claiming and updating jobs)
+@app.post("/api/_worker/claim")
+def worker_claim():
+    job = store.claim_next_job()
+    if job is None:
+        return Response(status_code=204)
+    return job
+
+
+@app.post("/api/_worker/update/{job_id}")
+def worker_update(job_id: str, values: dict):
+    # Allow worker to update updatable fields via API
+    try:
+        store.update_job(job_id, **values)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Generation job not found")
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    return {"status": "ok"}

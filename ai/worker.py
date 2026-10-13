@@ -6,6 +6,12 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+import json
+
+try:
+    import requests
+except Exception:
+    requests = None
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -50,11 +56,7 @@ def process_job(job: dict[str, Any]) -> None:
             cfg_scale=job["cfg_scale"],
             output_dir=OUTPUTS_DIR,
             base_url=job["base_url"],
-            report_progress=lambda progress, message: store.update_job(
-                job_id,
-                progress=progress,
-                message=message,
-            ),
+            report_progress=lambda progress, message: _report_progress(job_id, progress, message),
         )
         images = [
             {
@@ -77,19 +79,77 @@ def process_job(job: dict[str, Any]) -> None:
         logger.info("Generation job %s completed", job_id)
     except Exception as error:
         logger.exception("Generation job %s failed", job_id)
-        store.update_job(job_id, status="failed", progress=0, message=str(error))
+        _report_failure(job_id, str(error))
+
+
+def _report_progress(job_id: str, progress: int, message: str) -> None:
+    # If remote backend is configured, use HTTP update endpoint; otherwise use local store
+    backend_url = os.getenv("AI_BACKEND_URL")
+    values = {"progress": progress, "message": message}
+    if backend_url and requests:
+        try:
+            resp = requests.post(f"{backend_url.rstrip('/')}/api/_worker/update/{job_id}", json=values, timeout=10)
+            resp.raise_for_status()
+            return
+        except Exception:
+            logger.warning("Failed to report progress to backend, falling back to local DB")
+    try:
+        store.update_job(job_id, **values)
+    except Exception:
+        logger.exception("Failed to update local DB for job %s", job_id)
+
+
+def _report_failure(job_id: str, message: str) -> None:
+    backend_url = os.getenv("AI_BACKEND_URL")
+    values = {"status": "failed", "progress": 0, "message": message}
+    if backend_url and requests:
+        try:
+            resp = requests.post(f"{backend_url.rstrip('/')}/api/_worker/update/{job_id}", json=values, timeout=10)
+            resp.raise_for_status()
+            return
+        except Exception:
+            logger.warning("Failed to report failure to backend, falling back to local DB")
+    try:
+        store.update_job(job_id, status="failed", progress=0, message=message)
+    except Exception:
+        logger.exception("Failed to update local DB for job %s", job_id)
 
 
 def run_worker() -> None:
-    store.initialize_database()
-    logger.info("AI worker is running; polling the database queue")
-    while True:
-        job = store.claim_next_job()
-        if job is None:
-            time.sleep(POLL_INTERVAL_SECONDS)
-            continue
-        logger.info("Processing generation job %s", job["job_id"])
-        process_job(job)
+    # support two modes:
+    # - local DB polling (default)
+    # - remote backend HTTP-based polling when AI_BACKEND_URL is set
+    backend_url = os.getenv("AI_BACKEND_URL")
+    if backend_url and requests is None:
+        logger.error("AI_BACKEND_URL is set but 'requests' package is not available. Install requests or unset AI_BACKEND_URL.")
+        return
+
+    if backend_url:
+        logger.info("AI worker is running in remote-backend mode; polling %s/_worker/claim", backend_url)
+        while True:
+            try:
+                resp = requests.post(f"{backend_url.rstrip('/')}/api/_worker/claim", timeout=10)
+                if resp.status_code == 204:
+                    time.sleep(POLL_INTERVAL_SECONDS)
+                    continue
+                resp.raise_for_status()
+                job = resp.json()
+            except Exception as e:
+                logger.exception("Error claiming job from backend: %s", e)
+                time.sleep(POLL_INTERVAL_SECONDS)
+                continue
+            logger.info("Processing generation job %s", job["job_id"])
+            process_job(job)
+    else:
+        store.initialize_database()
+        logger.info("AI worker is running; polling the database queue")
+        while True:
+            job = store.claim_next_job()
+            if job is None:
+                time.sleep(POLL_INTERVAL_SECONDS)
+                continue
+            logger.info("Processing generation job %s", job["job_id"])
+            process_job(job)
 
 
 if __name__ == "__main__":
