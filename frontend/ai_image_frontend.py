@@ -5,6 +5,7 @@ Run with: python ai_image_frontend.py --api-url http://127.0.0.1:8000
 
 import argparse
 import json
+import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -497,7 +498,7 @@ PAGE = r'''<!doctype html>
 
 <script>
 const configuredApiUrl = __API_BASE_URL__;
-const apiBaseUrl = (configuredApiUrl || `${window.location.protocol}//${window.location.hostname}:8001`).replace(/\/$/, '');
+const apiBaseUrl = (configuredApiUrl || `${window.location.protocol}//${window.location.hostname}:8000`).replace(/\/$/, '');
 
 const promptInput = document.querySelector('#prompt');
 const modelSelect = document.querySelector('#model');
@@ -691,9 +692,9 @@ async function loadModels() {
         option.textContent = item.filename;
         return option;
       }));
-      if (modelNote) modelNote.textContent = `พบ ${models.length} โมเดลใน backend/models`;
+      if (modelNote) modelNote.textContent = `พบ ${models.length} โมเดลในเครื่อง Backend`;
     } else {
-      if (modelNote) modelNote.textContent = 'ยังไม่มีไฟล์โมเดลใน backend/models';
+      if (modelNote) modelNote.textContent = `ใช้โมเดล ${modelSelect.value} จากเครื่อง AI Worker`;
     }
   } catch {
     if (modelNote) modelNote.textContent = 'ใช้โมเดลเริ่มต้น (ตรวจสอบ uvicorn)';
@@ -829,7 +830,11 @@ def make_handler(api_url: str | None):
 
 def main():
     parser = argparse.ArgumentParser(description="Run the standalone AI Image Studio frontend.")
-    parser.add_argument("--api-url", help="Backend base URL, e.g. http://127.0.0.1:8000")
+    parser.add_argument(
+      "--api-url",
+      default=os.getenv("AI_BACKEND_URL", "http://127.0.0.1:8000"),
+      help="Backend base URL (default: AI_BACKEND_URL or http://127.0.0.1:8000)",
+    )
     parser.add_argument("--host", default="127.0.0.1", help="Address to serve on (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=5500, help="Frontend port (default: 5500)")
     args = parser.parse_args()

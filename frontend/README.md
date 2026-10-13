@@ -1,23 +1,18 @@
 # Frontend
 
-`ai_image_frontend.py` รวมหน้าเว็บ, CSS และ browser code ไว้ในไฟล์ Python เดียว ใช้ Python standard library จึงไม่ต้องติดตั้ง pip package เพิ่ม แต่ต้องมี backend และ AI worker ทำงานอยู่เพื่อสร้างภาพ
+`ai_image_frontend.py` ให้บริการหน้าเว็บแบบ standalone โดยใช้ Python standard library. Browser ติดต่อ backend โดยตรงเพื่อส่งงาน ตรวจสถานะ และโหลดภาพ
 
-## รันบนเครื่องเดียวกับ Backend
+## รันบนเครื่องแยก
 
-```powershell
-cd c:\proAi\frontend
-python ai_image_frontend.py
-```
-
-เปิด `http://127.0.0.1:5500`
-
-## รันบนเครื่องอื่น หรือเปิดให้เครื่องอื่นเข้าหน้าเว็บ
-
-`--api-url` คือ URL ของ backend ที่ frontend จะเรียก ต้องใช้ IP จริงของเครื่อง backend เมื่ออยู่คนละเครื่อง ส่วน `--host 0.0.0.0` ทำให้ frontend รับ browser จาก network ได้:
+จาก PowerShell ในโฟลเดอร์โปรเจกต์:
 
 ```powershell
-cd c:\proAi\frontend
-python ai_image_frontend.py --api-url http://172.20.5.197:8000 --host 0.0.0.0 --port 5500
+$env:AI_BACKEND_URL = "http://<backend-address>:8000"
+.\run_frontend.bat
 ```
 
-เปลี่ยน `172.20.5.197` เป็น IP ปัจจุบันของเครื่อง backend ซึ่งดูได้ด้วย `ipconfig` ถ้าเปิด browser บนเครื่องอื่น ให้เข้า `http://<IP-เครื่องที่รัน-frontend>:5500` และอนุญาต Firewall สำหรับพอร์ต `5500` หากถูกบล็อก
+เปิด `http://<frontend-address>:5500` จาก browser. ค่าเริ่มต้นของสคริปต์คือฟังทุก network interface ที่พอร์ต `5500`; ตั้ง `FRONTEND_HOST` และ `FRONTEND_PORT` เพื่อเปลี่ยนค่า
+
+เครื่องที่เปิด browser ต้องเข้าถึงทั้ง frontend ที่พอร์ต TCP `5500` และ backend ที่พอร์ต TCP `8000`. หากรัน frontend และ backend บนเครื่องเดียวกัน ใช้ `http://127.0.0.1:8000` เป็น `AI_BACKEND_URL` ได้
+
+รันโดยตรงได้ด้วย `python frontend\ai_image_frontend.py --api-url http://<backend-address>:8000 --host 0.0.0.0 --port 5500`.

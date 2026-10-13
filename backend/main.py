@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import hmac
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -13,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from fastapi import FastAPI, HTTPException, Request as FastAPIRequest
+from fastapi import FastAPI, Header, HTTPException, Request as FastAPIRequest, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -43,6 +44,21 @@ class GeneratedImage(BaseModel):
     ratio: str
 
 
+class WorkerProgress(BaseModel):
+    progress: int = Field(ge=0, le=99)
+    message: str = Field(max_length=500)
+
+
+class WorkerCompletion(BaseModel):
+    images: list[GeneratedImage]
+    model_path: str
+    engine: str = "diffusers"
+
+
+class WorkerFailure(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)
+
+
 
 
 def resolve_shared_path(env_name: str, default_path: Path) -> Path:
@@ -57,7 +73,7 @@ def resolve_shared_path(env_name: str, default_path: Path) -> Path:
 
 
 app = FastAPI(title="AI Image Studio Backend", version="1.0.0")
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
 MODELS_DIR = resolve_shared_path("AI_MODELS_DIR", PROJECT_ROOT / "ai" / "models")
 OUTPUTS_DIR = resolve_shared_path("AI_OUTPUTS_DIR", PROJECT_ROOT / "ai" / "outputs")
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -88,6 +104,84 @@ def root_status():
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "service": "ai-image-backend"}
+
+
+def require_worker_token(authorization: str | None) -> None:
+    expected_token = os.getenv("AI_WORKER_TOKEN", "")
+    if not expected_token:
+        raise HTTPException(status_code=503, detail="AI worker is not configured")
+    supplied_token = authorization.removeprefix("Bearer ") if authorization else ""
+    if not hmac.compare_digest(supplied_token, expected_token):
+        raise HTTPException(status_code=401, detail="Invalid worker token")
+
+
+def require_processing_job(job_id: str) -> dict:
+    job = store.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="ไม่พบงานสร้างภาพ")
+    if job["status"] != "processing":
+        raise HTTPException(status_code=409, detail="งานนี้ไม่ได้อยู่ในสถานะกำลังประมวลผล")
+    return job
+
+
+@app.post("/api/worker/jobs/claim")
+def claim_worker_job(authorization: str | None = Header(default=None)):
+    require_worker_token(authorization)
+    job = store.claim_next_job()
+    if job is None:
+        return Response(status_code=204)
+    return job
+
+
+@app.post("/api/worker/jobs/{job_id}/progress")
+def report_worker_progress(job_id: str, update: WorkerProgress, authorization: str | None = Header(default=None)):
+    require_worker_token(authorization)
+    require_processing_job(job_id)
+    store.update_job(job_id, progress=update.progress, message=update.message)
+    return {"status": "ok"}
+
+
+@app.put("/api/worker/jobs/{job_id}/images/{filename}")
+async def upload_worker_image(job_id: str, filename: str, http_request: FastAPIRequest, authorization: str | None = Header(default=None)):
+    require_worker_token(authorization)
+    job = require_processing_job(job_id)
+    if not re.fullmatch(r"[0-9]+\.png", filename):
+        raise HTTPException(status_code=400, detail="ชื่อไฟล์ภาพไม่ถูกต้อง")
+
+    image_data = await http_request.body()
+    if len(image_data) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="ไฟล์ภาพมีขนาดใหญ่เกินไป")
+    if not image_data.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise HTTPException(status_code=415, detail="รองรับเฉพาะไฟล์ PNG")
+
+    OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    destination = OUTPUTS_DIR / filename
+    destination.write_bytes(image_data)
+    return {"url": f"{job['base_url'].rstrip('/')}/outputs/{filename}"}
+
+
+@app.post("/api/worker/jobs/{job_id}/complete")
+def complete_worker_job(job_id: str, result: WorkerCompletion, authorization: str | None = Header(default=None)):
+    require_worker_token(authorization)
+    require_processing_job(job_id)
+    store.update_job(
+        job_id,
+        status="completed",
+        progress=100,
+        message="สร้างภาพเสร็จแล้ว",
+        images=[image.model_dump() for image in result.images],
+        model_path=result.model_path,
+        engine=result.engine,
+    )
+    return {"status": "completed"}
+
+
+@app.post("/api/worker/jobs/{job_id}/fail")
+def fail_worker_job(job_id: str, failure: WorkerFailure, authorization: str | None = Header(default=None)):
+    require_worker_token(authorization)
+    require_processing_job(job_id)
+    store.update_job(job_id, status="failed", progress=0, message=failure.message)
+    return {"status": "failed"}
 
 
 def safe_filename(filename: str) -> str:

@@ -1,4 +1,4 @@
-"""SQLite repository for generation jobs shared by the API and AI worker."""
+"""SQLite repository for generation jobs managed by the backend API."""
 
 import json
 import os

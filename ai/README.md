@@ -1,21 +1,29 @@
 # AI Worker
 
-โฟลเดอร์นี้แยกงานโหลดโมเดลและสร้างภาพออกจาก Backend API โดย `worker.py` อ่านงานจาก SQLite, เรียก `image_generator.py` ทำ inference และเขียนสถานะ/ผลลัพธ์กลับ database
+AI worker รัน inference และเชื่อมต่อ backend ผ่าน HTTP API จึงติดตั้งบนเครื่องที่มี GPU/โมเดลแยกจาก backend ได้ ไม่ต้องใช้ SQLite หรือโฟลเดอร์ผลลัพธ์ร่วมกัน
 
-## สิ่งที่ต้องติดตั้ง
+## เตรียมเครื่อง AI
 
-- ใช้ Python virtual environment เดียวกับ backend
-- ติดตั้ง PyTorch ให้ตรงกับ CPU หรือ CUDA ของเครื่อง แล้วติดตั้งรายการใน `backend/requirements.txt` ตาม [README หลัก](../README.md#ติดตั้งครั้งแรก)
-- วางไฟล์โมเดลไว้ใน `backend/models/`
-
-AI worker ไม่มี IP ที่ต้องแก้ในไฟล์ ถ้ารัน Backend และ worker บนเครื่องเดียวกันจะใช้ database และโฟลเดอร์โมเดลชุดเดียวกัน
-
-## วิธีรัน
+ติดตั้ง Python packages บนเครื่อง AI โดยเลือก PyTorch build ให้ตรงกับ CPU หรือ CUDA ของเครื่องก่อน:
 
 ```powershell
-cd c:\proAi
-.\backend\.venv\Scripts\Activate.ps1
-python -m ai.worker
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
 ```
 
-คง terminal นี้เปิดไว้ระหว่างใช้งาน worker อ่านโมเดลจาก `backend/models/` และบันทึกรูปใน `backend/outputs/`
+วางไฟล์โมเดล เช่น `meinamix_v12Final.safetensors` ไว้ใน `ai/models/` บนเครื่อง AI หรือกำหนดโฟลเดอร์อื่นผ่าน `AI_MODELS_DIR`.
+
+## รัน worker
+
+จาก PowerShell ที่โฟลเดอร์โปรเจกต์:
+
+```powershell
+$env:AI_BACKEND_URL = "http://<backend-address>:8000"
+$env:AI_WORKER_TOKEN = "replace-with-the-same-long-random-secret"
+.\run_worker.bat
+```
+
+`AI_WORKER_TOKEN` ต้องตรงกับค่าบน backend. `AI_OUTPUTS_DIR` ใช้เป็นโฟลเดอร์ชั่วคราวในเครื่อง AI; worker จะส่งไฟล์ภาพไปเก็บที่ backend เอง ไม่ต้องแชร์โฟลเดอร์นี้ผ่าน network.
+
+พอร์ต TCP `8000` ของ backend ต้องเข้าถึงได้จากเครื่อง AI ส่วน worker ไม่ต้องเปิดพอร์ต inbound. ถ้า backend ยังไม่ทำงาน worker จะลองเชื่อมต่อใหม่เป็นระยะ
